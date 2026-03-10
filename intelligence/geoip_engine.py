@@ -32,22 +32,24 @@ class GeoIPEngine:
              return {"country": "Local Network", "city": "Internal", "code": "LO", "lat": 0, "lon": 0}
 
         try:
-            # Simple free API for demonstration (Rate limited)
-            response = requests.get(f"https://ipapi.co/{ip}/json/", timeout=5)
+            # Using ip-api.com (Reliable free tier: 45 req/min)
+            response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
             if response.status_code == 200:
                 data = response.json()
-                result = {
-                    "country": data.get("country_name", "Unknown"),
-                    "city": data.get("city", "Unknown"),
-                    "code": data.get("country_code", "XX"),
-                    "lat": data.get("latitude", 0),
-                    "lon": data.get("longitude", 0)
-                }
-                self.cache[ip] = result
-                self._save_cache()
-                return result
+                if data.get("status") == "success":
+                    result = {
+                        "country": data.get("country", "Unknown"),
+                        "city": data.get("city", "Unknown"),
+                        "code": data.get("countryCode", "XX"),
+                        "lat": data.get("lat", 0),
+                        "lon": data.get("lon", 0)
+                    }
+                    self.cache[ip] = result
+                    self._save_cache()
+                    return result
         except Exception as e:
             logger.error(f"GeoIP Error for {ip}: {e}")
+
         
         # Consistent mock data based on IP hash
         countries = [
