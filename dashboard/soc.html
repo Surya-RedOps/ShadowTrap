@@ -400,6 +400,9 @@
         <div class="status-panel">
             <div id="ws-status" class="badge offline"><i class="fas fa-circle-nodes"></i> OFFLINE</div>
             <div class="badge online"><i class="fas fa-shield-halved"></i> FIREWALL ACTIVE</div>
+            <button onclick="startSimulation()"
+                style="background: none; border: 1px solid var(--accent); color: var(--accent); font-family: 'Orbitron'; cursor: pointer; padding: 5px 10px; font-size: 10px; margin-right: 10px;"><i
+                    class="fas fa-bolt"></i> SIMULATION WARP</button>
             <button onclick="clearLogs()"
                 style="background: none; border: 1px solid var(--danger); color: var(--danger); font-family: 'Orbitron'; cursor: pointer; padding: 5px 10px; font-size: 10px;">PURGE
                 COMMANDS</button>
@@ -724,6 +727,16 @@
             if (!confirm("Are you sure you want to purge all intercepted data?")) return;
             feed.innerHTML = '';
             fetchProtected('/soc/clear-stats', { method: 'POST' });
+        }
+
+        async function startSimulation() {
+            createAlertPopup("WARP DRIVE ACTIVE: INJECTING GLOBAL THREATS...");
+            try {
+                await fetchProtected('/soc/simulate-global', { method: 'POST' });
+                // We don't need to refresh stats here as the backend broadcasts via WS
+            } catch (e) {
+                console.error("Simulation failed:", e);
+            }
         }
 
         connect();

