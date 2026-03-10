@@ -639,8 +639,8 @@
             setTimeout(() => div.remove(), 5000);
         }
 
-        async function fetchProtected(url) {
-            const res = await fetch(url);
+        async function fetchProtected(url, options = {}) {
+            const res = await fetch(url, options);
             if (res.status === 401) {
                 document.getElementById('login-overlay').style.display = 'flex';
                 throw new Error("Unauthorized");
