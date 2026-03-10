@@ -662,41 +662,60 @@
 
         async function refreshGlobalStats() {
             try {
-                const stats = await fetchProtected('/soc/stats');
-                const malware = await fetchProtected('/soc/stats/malware');
-                const actors = await fetchProtected('/soc/threat-actors');
-                const geo = await fetchProtected('/soc/analytics/geo');
-                const commands = await fetchProtected('/soc/analytics/top-commands');
+                // Fetch stats with individual error handling to prevent stalls
+                const safeFetch = async (url) => {
+                    try { return await fetchProtected(url); }
+                    catch (e) { console.warn(`Failed to fetch ${url}:`, e); return null; }
+                };
 
-                actorCounter.innerText = actors.length;
-                malwareCounter.innerText = malware.total_captured;
+                const stats = await safeFetch('/soc/stats');
+                const malware = await safeFetch('/soc/stats/malware');
+                const actors = await safeFetch('/soc/threat-actors');
+                const geo = await safeFetch('/soc/analytics/geo');
+                const commands = await safeFetch('/soc/analytics/top-commands');
+
+                if (actors) actorCounter.innerText = actors.length;
+                if (malware) malwareCounter.innerText = malware.total_captured;
 
                 // Update Top Origin
                 if (geo && geo.length > 0) {
-                    const top = geo.sort((a, b) => b.count - a.count)[0];
-                    topCountry.innerText = `${top.country} (${top.count})`;
+                    const sortedGeo = [...geo].sort((a, b) => b.count - a.count);
+                    const top = sortedGeo[0];
+                    if (top.count > 0) {
+                        topCountry.innerText = `${top.country} (${top.count})`;
+                    } else {
+                        topCountry.innerText = "NO DATA";
+                    }
+                } else {
+                    topCountry.innerText = "N/A";
                 }
 
                 // Update Top Commands
-                if (commands) {
+                if (commands && commands.length > 0) {
                     topCommandsList.innerHTML = commands.slice(0, 5).map(c => `
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(0,242,255,0.1); padding-bottom: 4px;">
                             <code style="color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">${c[0]}</code>
                             <span style="opacity: 0.7;">${c[1]}</span>
                         </div>
                     `).join('');
+                } else {
+                    topCommandsList.innerHTML = '<div style="opacity:0.5; text-align:center; margin-top:10px;">AWAITING COMMANDS...</div>';
                 }
 
                 // Update Risk Chart
-                const dist = stats.risk_distribution || {};
-                riskChart.data.datasets[0].data = [
-                    dist['Low Risk'] || 0,
-                    dist['Medium Risk'] || 0,
-                    dist['Active Threat Actor'] || 0
-                ];
-                riskChart.update();
+                if (stats && stats.risk_distribution) {
+                    const dist = stats.risk_distribution;
+                    riskChart.data.datasets[0].data = [
+                        dist['Low Risk'] || 0,
+                        dist['Medium Risk'] || 0,
+                        dist['Active Threat Actor'] || 0
+                    ];
+                    riskChart.update();
+                }
 
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error("Critical error in refreshGlobalStats:", e);
+            }
         }
 
         function clearLogs() {

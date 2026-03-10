@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database.models import SSHSession, MalwareSample, ThreatEvent
-from intelligence.geoip_engine import GeoIPEngine
+from intelligence.geoip_engine import geoip_engine
 
 
 def get_total_attacks(db: Session):
@@ -61,23 +61,20 @@ def get_attack_frequency_by_hour(db: Session):
              .all()
 
 def get_geo_distribution(db: Session):
-    geoip_engine = GeoIPEngine()
     ips = db.query(SSHSession.ip_address).distinct().all()
     distribution = {}
     for ip in ips:
         if not ip or not ip[0]:
             continue
         ip_str = ip[0]
-        # Ignore local docker/internal IPs for the map stats
-        if ip_str.startswith("172.") or ip_str.startswith("127."):
-            continue
-            
+        
+        # Don't skip internal for stats, just label them, so the chart isn't empty
         location = geoip_engine.get_location(ip_str)
         country = location.get("country", "Unknown")
         distribution[country] = distribution.get(country, 0) + 1
     
     result = [{"country": k, "count": v} for k, v in distribution.items()]
-    return result if result else [{"country": "Pending Acquisition", "count": 0}]
+    return result if result else [{"country": "Awaiting Traffic", "count": 0}]
 
 def get_recent_activity(db: Session, limit: int = 10):
     return (
