@@ -683,8 +683,10 @@
                     const top = sortedGeo[0];
                     if (top.count > 0) {
                         topCountry.innerText = `${top.country} (${top.count})`;
+                        topCountry.style.color = "var(--accent)";
                     } else {
                         topCountry.innerText = "NO DATA";
+                        topCountry.style.color = "var(--text)";
                     }
                 } else {
                     topCountry.innerText = "N/A";
@@ -694,8 +696,8 @@
                 if (commands && commands.length > 0) {
                     topCommandsList.innerHTML = commands.slice(0, 5).map(c => `
                         <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(0,242,255,0.1); padding-bottom: 4px;">
-                            <code style="color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">${c[0]}</code>
-                            <span style="opacity: 0.7;">${c[1]}</span>
+                            <code style="color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">${c.command}</code>
+                            <span style="opacity: 0.7;">${c.count}</span>
                         </div>
                     `).join('');
                 } else {

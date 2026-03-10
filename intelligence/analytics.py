@@ -9,23 +9,16 @@ def get_total_attacks(db: Session):
 
 
 def get_risk_distribution(db: Session):
-    # Fetch from ThreatEvent classification
-    risk_counts = db.query(ThreatEvent.classification, func.count(ThreatEvent.id)).group_by(ThreatEvent.classification).all()
-    dist = {"Low Risk": 0, "Medium Risk": 0, "Active Threat Actor": 0}
-    for r in risk_counts:
-        if r[0] in dist:
-            dist[r[0]] = r[1]
-            
-    # Fallback to SSHSession risk if ThreatEvents is empty
-    if sum(dist.values()) == 0:
-        low = db.query(SSHSession).filter(SSHSession.risk_score <= 30).count()
-        med = db.query(SSHSession).filter(SSHSession.risk_score.between(31, 70)).count()
-        high = db.query(SSHSession).filter(SSHSession.risk_score > 70).count()
-        dist["Low Risk"] = low
-        dist["Medium Risk"] = med
-        dist["Active Threat Actor"] = high
-        
-    return dist
+    # Distribution of ALL attacks based on risk score
+    low = db.query(SSHSession).filter(SSHSession.risk_score <= 30).count()
+    med = db.query(SSHSession).filter(SSHSession.risk_score.between(31, 70)).count()
+    high = db.query(SSHSession).filter(SSHSession.risk_score > 70).count()
+    
+    return {
+        "Low Risk": low,
+        "Medium Risk": med,
+        "Active Threat Actor": high
+    }
 
 
 def get_top_ip(db: Session):
@@ -49,11 +42,15 @@ def get_top_threat_actors(db: Session, limit=5):
     return db.query(ThreatEvent).order_by(ThreatEvent.total_score.desc()).limit(limit).all()
 
 def get_top_commands(db: Session, limit: int = 5):
-    return db.query(SSHSession.command, func.count(SSHSession.command).label('count')) \
-             .group_by(SSHSession.command) \
-             .order_by(func.count(SSHSession.command).desc()) \
-             .limit(limit) \
-             .all()
+    # Group by command, ignoring empty sequences
+    results = db.query(SSHSession.command, func.count(SSHSession.command).label('count')) \
+                 .filter(SSHSession.command != '') \
+                 .group_by(SSHSession.command) \
+                 .order_by(func.count(SSHSession.command).desc()) \
+                 .limit(limit) \
+                 .all()
+    # Explicitly convert to dicts for clean JSON serialization
+    return [{"command": r[0], "count": r[1]} for r in results]
 
 def get_attack_frequency_by_hour(db: Session):
     return db.query(func.strftime('%H', SSHSession.timestamp).label('hour'), func.count(SSHSession.id)) \
