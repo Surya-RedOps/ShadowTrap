@@ -26,8 +26,8 @@ class ThreatScoringEngine:
         elif tactic in ["Exfiltration", "Impact"]:
             points = self.scores["critical"]
         
-        if points > 0:
-            self._update_db(ip, points)
+        # Always update the database to ensure the IP is tracked as a threat actor
+        self._update_db(ip, points)
         
         return points
 

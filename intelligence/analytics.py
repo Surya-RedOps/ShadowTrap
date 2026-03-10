@@ -53,11 +53,14 @@ def get_geo_distribution(db: Session):
     ips = db.query(SSHSession.ip_address).distinct().all()
     distribution = {}
     for ip in ips:
+        if not ip[0]: continue
         ip_str = ip[0]
         location = geoip_engine.get_location(ip_str)
         country = location.get("country", "Unknown")
         distribution[country] = distribution.get(country, 0) + 1
-    return [{"country": k, "count": v} for k, v in distribution.items()]
+    
+    result = [{"country": k, "count": v} for k, v in distribution.items()]
+    return result if result else [{"country": "None", "count": 0}]
 
 def get_recent_activity(db: Session, limit: int = 10):
     return (
