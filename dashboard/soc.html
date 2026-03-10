@@ -382,6 +382,18 @@
 
 <body>
 
+    <!-- Login Overlay -->
+    <div id="login-overlay" style="display: none;">
+        <div class="login-box">
+            <h2>SHADOWTRAP ACCESS</h2>
+            <p style="font-size: 10px; margin-bottom: 20px; opacity: 0.7;">RESTRICTED AREA: AUTHORIZATION REQUIRED</p>
+            <input type="password" id="login-pass" placeholder="ENTER ACCESS KEY">
+            <div id="login-error" style="color: var(--danger); font-size: 10px; margin-bottom: 15px; display: none;">
+                ACCESS DENIED: INVALID KEY</div>
+            <button onclick="attemptLogin()">AUTHORIZE</button>
+        </div>
+    </div>
+
     <header>
         <div class="logo">SHADOW<span>TRAP</span> <small style="font-size: 10px; letter-spacing: 0;">v1.5_PRO</small>
         </div>
@@ -688,8 +700,9 @@
         }
 
         function clearLogs() {
+            if (!confirm("Are you sure you want to purge all intercepted data?")) return;
             feed.innerHTML = '';
-            fetch('/soc/reset', { method: 'DELETE' });
+            fetchProtected('/soc/clear-stats', { method: 'POST' });
         }
 
         connect();
