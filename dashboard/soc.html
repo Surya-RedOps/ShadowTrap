@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowTrap | Next-Gen Deception Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono&display=swap');
+
+        :root {
+            --bg-dark: #05070a;
+            --panel-bg: rgba(13, 17, 23, 0.8);
+            --accent: #00f2ff;
+            --danger: #ff0055;
+            --warning: #ffaa00;
+            --success: #00ff88;
+            --text: #e1e1e1;
+            --border: rgba(0, 242, 255, 0.2);
+            --glass: blur(10px);
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.05) 0%, transparent 80%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 100%, 100% 4px, 100% 100%;
+            color: var(--text);
+            font-family: 'Roboto Mono', monospace;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--accent);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: 0 0 10px var(--accent);
+        }
+
+        .logo span {
+            color: var(--text);
+        }
+
+        .status-panel {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            border: 1px solid var(--accent);
+        }
+
+        .badge.online {
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .badge.offline {
+            background: rgba(255, 0, 85, 0.1);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: auto 1fr auto;
+            gap: 15px;
+            flex-grow: 1;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            backdrop-filter: var(--glass);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        .card h3 {
+            margin: 0 0 15px 0;
+            font-size: 14px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            font-family: 'Orbitron';
+            text-align: center;
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            text-align: center;
+            opacity: 0.7;
+        }
+
+        .feed-container {
+            grid-column: span 3;
+            grid-row: span 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .log-table th {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+            color: var(--accent);
+        }
+
+        .log-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .severity-high {
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .severity-med {
+            color: var(--warning);
+        }
+
+        .severity-low {
+            color: var(--success);
+        }
+
+        .glitch-text {
+            animation: glitch 2s infinite;
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+            }
+
+            20% {
+                transform: translate(-2px, 2px);
+            }
+
+            40% {
+                transform: translate(-2px, -2px);
+            }
+
+            60% {
+                transform: translate(2px, 2px);
+            }
+
+            80% {
+                transform: translate(2px, -2px);
+            }
+
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        #map-container {
+            height: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .map-marker {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--danger);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent);
+            border-radius: 10px;
+        }
+
+        .mini-badge {
+            font-size: 9px;
+            padding: 2px 5px;
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 3px;
+        }
+
+        /* Fullscreen Map Styles */
+        .card.fullscreen {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 10000 !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+        }
+
+        .card.fullscreen h3 {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1001;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 10px;
+            border: 1px solid var(--accent);
+            pointer-events: none;
+        }
+
+        .fullscreen-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1001;
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 5px 12px;
+            font-family: 'Orbitron';
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .fullscreen-toggle:hover {
+            background: var(--accent);
+            color: var(--bg-dark);
+            box-shadow: 0 0 15px var(--accent);
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 17, 23, 0.95);
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-box {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            padding: 40px;
+            width: 400px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+
+        .login-box h2 {
+            margin-bottom: 20px;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        .login-box input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            color: #fff;
+            margin-bottom: 20px;
+            font-family: 'Inter';
+            outline: none;
+        }
+
+        .login-box input:focus {
+            border-color: var(--accent);
+        }
+
+        .login-box button {
+            width: 100%;
+            background: var(--accent);
+            color: var(--bg-dark);
+            border: none;
+            padding: 12px;
+            font-family: 'Orbitron';
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-box button:hover {
+            box-shadow: 0 0 15px var(--accent);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="logo">SHADOW<span>TRAP</span> <small style="font-size: 10px; letter-spacing: 0;">v1.5_PRO</small>
+        </div>
+        <div class="status-panel">
+            <div id="ws-status" class="badge offline"><i class="fas fa-circle-nodes"></i> OFFLINE</div>
+            <div class="badge online"><i class="fas fa-shield-halved"></i> FIREWALL ACTIVE</div>
+            <button onclick="clearLogs()"
+                style="background: none; border: 1px solid var(--danger); color: var(--danger); font-family: 'Orbitron'; cursor: pointer; padding: 5px 10px; font-size: 10px;">PURGE
+                COMMANDS</button>
+        </div>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- GLOBAL COUNTERS -->
+        <div class="card">
+            <h3><i class="fas fa-crosshairs"></i> TOTAL ATTACKS</h3>
+            <div class="stat-value" id="attack-count">0000</div>
+            <div class="stat-label">Aggregated Interceptions</div>
+        </div>
+        <div class="card">
+            <h3><i class="fas fa-user-secret"></i> THREAT ACTORS</h3>
+            <div class="stat-value" id="actor-count" style="color: var(--warning);">0</div>
+            <div class="stat-label">Active Unique Entities</div>
+        </div>
+        <div class="card">
+            <h3><i class="fas fa-biohazard"></i> MALWARE CAPTURED</h3>
+            <div class="stat-value" id="malware-count" style="color: var(--danger);">0</div>
+            <div class="stat-label">Samples Stored in Vault</div>
+        </div>
+        <div class="card">
+            <h3><i class="fas fa-globe"></i> TOP ORIGIN</h3>
+            <div class="stat-value" id="top-country" style="font-size: 24px;">N/A</div>
+            <div class="stat-label">Geographic Concentration</div>
+        </div>
+
+        <!-- MAIN FEED -->
+        <div class="card feed-container">
+            <h3><i class="fas fa-terminal"></i> REAL-TIME INTERCEPTION STREAM</h3>
+            <div style="flex-grow: 1; overflow-y: auto;">
+                <table class="log-table">
+                    <thead>
+                        <tr>
+                            <th>TIME</th>
+                            <th>IP / LOCATION</th>
+                            <th>USER</th>
+                            <th>TACTIC</th>
+                            <th>COMMAND / PAYLOAD</th>
+                            <th>RISK</th>
+                        </tr>
+                    </thead>
+                    <tbody id="interception-feed">
+                        <!-- Stream data -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SIDE ANALYTICS -->
+        <div class="card" style="grid-column: span 1;">
+            <h3><i class="fas fa-chart-pie"></i> RISK DISTRIBUTION</h3>
+            <canvas id="riskChart" height="200"></canvas>
+        </div>
+
+        <!-- NEW CARD: TOP COMMANDS -->
+        <div class="card" style="grid-column: span 1;">
+            <h3><i class="fas fa-list-check"></i> TOP EXPLOITED COMMANDS</h3>
+            <div id="top-commands-list" style="font-size: 11px; margin-top: 10px;">
+                <!-- Commands injected here -->
+            </div>
+        </div>
+
+        <div class="card" id="map-card" style="grid-column: span 3; grid-row: span 1; padding: 0; min-height: 400px;">
+            <h3><i class="fas fa-map-location-dot" style="margin-left: 15px; margin-top: 15px;"></i> ATTACK VECTORS</h3>
+            <button class="fullscreen-toggle" onclick="toggleFullscreen()"><i class="fas fa-expand"></i>
+                FULLSCREEN</button>
+            <div id="map" style="height: 100%; width: 100%; background: #000;"></div>
+        </div>
+    </div>
+
+    <script>
+        const feed = document.getElementById('interception-feed');
+        const attackCounter = document.getElementById('attack-count');
+        const malwareCounter = document.getElementById('malware-count');
+        const actorCounter = document.getElementById('actor-count');
+        const topCountry = document.getElementById('top-country');
+        const topCommandsList = document.getElementById('top-commands-list');
+        const wsStatus = document.getElementById('ws-status');
+
+        // Charts
+        const riskCtx = document.getElementById('riskChart').getContext('2d');
+        const riskChart = new Chart(riskCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['LOW', 'MEDIUM', 'HIGH'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#00ff88', '#ffaa00', '#ff0055'],
+                    borderColor: '#05070a',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                cutout: '70%'
+            }
+        });
+
+        // Websocket Logic
+        let ws;
+        function connect() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                wsStatus.className = 'badge online';
+                wsStatus.innerHTML = '<i class="fas fa-circle-nodes"></i> LIVE FEED ACTIVE';
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.event === "HONEYTOKEN_ACCESS") {
+                    createAlertPopup(`HONEYTOKEN ACCESSED! IP: ${data.ip}`);
+                    return;
+                }
+                processInbound(data);
+            };
+
+            ws.onclose = () => {
+                wsStatus.className = 'badge offline';
+                wsStatus.innerHTML = '<i class="fas fa-circle-nodes"></i> DISCONNECTED';
+                setTimeout(connect, 2000);
+            };
+        }
+
+        // Leaflet Map Initialization
+        const map = L.map('map', {
+            center: [20, 0],
+            zoom: 2,
+            zoomControl: false,
+            attributionControl: false
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        let activeMarkers = [];
+
+        function addMapMarker(location) {
+            if (!location || location.lat === undefined || location.lon === undefined) return;
+
+            const marker = L.circleMarker([location.lat || 0, location.lon || 0], {
+                radius: 6,
+                fillColor: "#ff0055",
+                color: "#ff0055",
+                weight: 2,
+                opacity: 0.8,
+                fillOpacity: 0.4
+            }).addTo(map);
+
+            marker.bindPopup(`<b>${location.city}, ${location.code}</b><br>${location.country}`);
+
+            activeMarkers.push(marker);
+            if (activeMarkers.length > 50) {
+                const oldMarker = activeMarkers.shift();
+                map.removeLayer(oldMarker);
+            }
+
+            // Pulse effect simulation (Leaflet doesn't have native CSS pulse on markers easily without plugins)
+            // But we can zoom to it if it's a major event
+            if (location.code !== "LO") {
+                map.panTo([location.lat, location.lon]);
+            }
+        }
+
+        function toggleFullscreen() {
+            const card = document.getElementById('map-card');
+            const btn = card.querySelector('.fullscreen-toggle');
+            card.classList.toggle('fullscreen');
+
+            if (card.classList.contains('fullscreen')) {
+                btn.innerHTML = '<i class="fas fa-compress"></i> MINIMIZE';
+            } else {
+                btn.innerHTML = '<i class="fas fa-expand"></i> FULLSCREEN';
+            }
+
+            // Critical for Leaflet to re-calculate dimensions
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
+        }
+
+        function processInbound(data) {
+            const row = document.createElement('tr');
+            const severityClass = data.risk_score > 70 ? 'severity-high' : (data.risk_score > 30 ? 'severity-med' : 'severity-low');
+
+            const time = new Date().toLocaleTimeString();
+            const location = data.location ? `${data.location.city}, ${data.location.code}` : "Unknown";
+
+            row.innerHTML = `
+                <td><span style="opacity:0.5">${time}</span></td>
+                <td><div style="font-weight:bold">${data.ip}</div><div style="font-size:9px; opacity:0.7">${location}</div></td>
+                <td><span class="mini-badge">${data.user}</span></td>
+                <td><span style="color: var(--accent)">${data.mitre_tactic}</span></td>
+                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><code>${data.command}</code></td>
+                <td><span class="${severityClass}">${data.risk_score}</span></td>
+            `;
+
+            feed.prepend(row);
+            if (feed.children.length > 20) feed.lastChild.remove();
+
+            // Increment local counters
+            attackCounter.innerText = String(parseInt(attackCounter.innerText) + 1).padStart(4, '0');
+
+            // Add map marker
+            addMapMarker(data.location);
+
+            if (data.patterns && data.patterns.length > 0) {
+                createAlertPopup(`PATTERN DETECTED: ${data.patterns[0]} FROM ${data.ip}`);
+            }
+
+            refreshGlobalStats();
+        }
+
+        function createAlertPopup(text) {
+            const div = document.createElement('div');
+            div.style.position = 'fixed';
+            div.style.bottom = '20px';
+            div.style.right = '20px';
+            div.style.background = 'var(--danger)';
+            div.style.color = 'white';
+            div.style.padding = '15px';
+            div.style.borderRadius = '4px';
+            div.style.fontFamily = 'Orbitron';
+            div.style.boxShadow = '0 0 20px rgba(255,0,0,0.5)';
+            div.style.zIndex = '9999';
+            div.innerHTML = `<i class="fas fa-triangle-exclamation"></i> ALERT: ${text}`;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 5000);
+        }
+
+        async function fetchProtected(url) {
+            const res = await fetch(url);
+            if (res.status === 401) {
+                document.getElementById('login-overlay').style.display = 'flex';
+                throw new Error("Unauthorized");
+            }
+            return res.json();
+        }
+
+        async function attemptLogin() {
+            const pass = document.getElementById('login-pass').value;
+            const res = await fetch('/soc/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: pass })
+            });
+
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                document.getElementById('login-error').style.display = 'block';
+            }
+        }
+
+        async function refreshGlobalStats() {
+            try {
+                const stats = await fetchProtected('/soc/stats');
+                const malware = await fetchProtected('/soc/stats/malware');
+                const actors = await fetchProtected('/soc/threat-actors');
+                const geo = await fetchProtected('/soc/analytics/geo');
+                const commands = await fetchProtected('/soc/analytics/top-commands');
+
+                actorCounter.innerText = actors.length;
+                malwareCounter.innerText = malware.total_captured;
+
+                // Update Top Origin
+                if (geo && geo.length > 0) {
+                    const top = geo.sort((a, b) => b.count - a.count)[0];
+                    topCountry.innerText = `${top.country} (${top.count})`;
+                }
+
+                // Update Top Commands
+                if (commands) {
+                    topCommandsList.innerHTML = commands.slice(0, 5).map(c => `
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid rgba(0,242,255,0.1); padding-bottom: 4px;">
+                            <code style="color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">${c[0]}</code>
+                            <span style="opacity: 0.7;">${c[1]}</span>
+                        </div>
+                    `).join('');
+                }
+
+                // Update Risk Chart
+                const dist = stats.risk_distribution || {};
+                riskChart.data.datasets[0].data = [
+                    dist['Low Risk'] || 0,
+                    dist['Medium Risk'] || 0,
+                    dist['Active Threat Actor'] || 0
+                ];
+                riskChart.update();
+
+            } catch (e) { console.error(e); }
+        }
+
+        function clearLogs() {
+            feed.innerHTML = '';
+            fetch('/soc/reset', { method: 'DELETE' });
+        }
+
+        connect();
+        setInterval(refreshGlobalStats, 10000);
+        refreshGlobalStats();
+
+    </script>
+</body>
+
+</html>

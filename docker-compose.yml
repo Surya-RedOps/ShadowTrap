@@ -1,0 +1,22 @@
+services:
+  shadowtrap:
+    build: .
+    restart: always
+    env_file: .env
+    volumes:
+      - ./database:/app/database
+      - ./logs:/app/logs
+    expose:
+      - "8000"
+      - "2222"
+
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+      - "22:22"
+    depends_on:
+      - shadowtrap

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ShadowTrap Dashboard</title>
+    <style>
+        body {
+            background: #0b0f17;
+            color: #00ff9c;
+            font-family: monospace;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #00ff9c;
+        }
+
+        #alert {
+            display: none;
+            background: red;
+            color: white;
+            padding: 15px;
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-align: center;
+            border: 2px solid #ff5555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #00ff9c;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #001f14;
+        }
+
+        tr:nth-child(even) {
+            background: #00110a;
+        }
+
+        .high { color: red; font-weight: bold; }
+        .medium { color: orange; }
+        .low { color: #00ff9c; }
+    </style>
+</head>
+<body>
+
+<h1>🛡️ ShadowTrap – Live Attacker Sessions</h1>
+
+<div id="alert">🚨 HIGH RISK ATTACK DETECTED 🚨</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>IP</th>
+            <th>Username</th>
+            <th>Command</th>
+            <th>Risk</th>
+            <th>Time</th>
+        </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+</table>
+
+<script>
+function riskClass(risk) {
+    if (risk >= 80) return "high";
+    if (risk >= 40) return "medium";
+    return "low";
+}
+
+async function loadSessions() {
+    const res = await fetch("/api/sessions");
+    const data = await res.json();
+
+    const tbody = document.getElementById("table-body");
+    const alertBox = document.getElementById("alert");
+
+    tbody.innerHTML = "";
+
+    let highRiskDetected = false;
+
+    data.forEach(s => {
+        const cls = riskClass(s.risk);
+
+        if (s.risk >= 80) highRiskDetected = true;
+
+        const row = `<tr>
+            <td>${s.ip}</td>
+            <td>${s.username}</td>
+            <td>${s.command}</td>
+            <td class="${cls}">${s.risk}</td>
+            <td>${s.time}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+    });
+
+    alertBox.style.display = highRiskDetected ? "block" : "none";
+}
+
+setInterval(loadSessions, 3000);
+loadSessions();
+</script>
+
+</body>
+</html>
