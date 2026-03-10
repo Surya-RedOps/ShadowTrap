@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database.models import SSHSession, MalwareSample, ThreatEvent
+from intelligence.geoip_engine import GeoIPEngine
 
 
 def get_total_attacks(db: Session):
@@ -12,7 +13,18 @@ def get_risk_distribution(db: Session):
     risk_counts = db.query(ThreatEvent.classification, func.count(ThreatEvent.id)).group_by(ThreatEvent.classification).all()
     dist = {"Low Risk": 0, "Medium Risk": 0, "Active Threat Actor": 0}
     for r in risk_counts:
-        dist[r[0]] = r[1]
+        if r[0] in dist:
+            dist[r[0]] = r[1]
+            
+    # Fallback to SSHSession risk if ThreatEvents is empty
+    if sum(dist.values()) == 0:
+        low = db.query(SSHSession).filter(SSHSession.risk_score <= 30).count()
+        med = db.query(SSHSession).filter(SSHSession.risk_score.between(31, 70)).count()
+        high = db.query(SSHSession).filter(SSHSession.risk_score > 70).count()
+        dist["Low Risk"] = low
+        dist["Medium Risk"] = med
+        dist["Active Threat Actor"] = high
+        
     return dist
 
 
@@ -49,18 +61,23 @@ def get_attack_frequency_by_hour(db: Session):
              .all()
 
 def get_geo_distribution(db: Session):
-    from intelligence.geoip_engine import geoip_engine
+    geoip_engine = GeoIPEngine()
     ips = db.query(SSHSession.ip_address).distinct().all()
     distribution = {}
     for ip in ips:
-        if not ip[0]: continue
+        if not ip or not ip[0]:
+            continue
         ip_str = ip[0]
+        # Ignore local docker/internal IPs for the map stats
+        if ip_str.startswith("172.") or ip_str.startswith("127."):
+            continue
+            
         location = geoip_engine.get_location(ip_str)
         country = location.get("country", "Unknown")
         distribution[country] = distribution.get(country, 0) + 1
     
     result = [{"country": k, "count": v} for k, v in distribution.items()]
-    return result if result else [{"country": "None", "count": 0}]
+    return result if result else [{"country": "Pending Acquisition", "count": 0}]
 
 def get_recent_activity(db: Session, limit: int = 10):
     return (
