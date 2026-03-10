@@ -49,15 +49,13 @@ def get_attack_frequency_by_hour(db: Session):
              .all()
 
 def get_geo_distribution(db: Session):
-    # This correctly groups by country if we had a country field, 
-    # but since GeoIP is dynamic, we'll continue to use the consistent hash for now
-    countries = ["US", "CN", "RU", "DE", "BR", "IN", "FR"]
+    from intelligence.geoip_engine import geoip_engine
     ips = db.query(SSHSession.ip_address).distinct().all()
     distribution = {}
     for ip in ips:
         ip_str = ip[0]
-        hash_val = sum(ord(c) for c in ip_str)
-        country = countries[hash_val % len(countries)]
+        location = geoip_engine.get_location(ip_str)
+        country = location.get("country", "Unknown")
         distribution[country] = distribution.get(country, 0) + 1
     return [{"country": k, "count": v} for k, v in distribution.items()]
 

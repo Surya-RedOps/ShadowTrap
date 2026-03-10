@@ -28,7 +28,7 @@ class GeoIPEngine:
         if ip in self.cache:
             return self.cache[ip]
         
-        if ip.startswith("127.") or ip.startswith("192.168."):
+        if ip.startswith("127.") or ip.startswith("192.168.") or ip.startswith("172."):
              return {"country": "Local Network", "city": "Internal", "code": "LO", "lat": 0, "lon": 0}
 
         try:
